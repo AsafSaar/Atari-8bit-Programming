@@ -5,3 +5,4 @@ Programming the Atari 8-bit computers using the CC65 Cross Compiler.<br>
 Alltira Emulator: http://www.virtualdub.org/altirra.html<br>
 Sublime Text: https://www.sublimetext.com<br>
 cc65 Compiler: https://www.cc65.org<br>
+Atari Player Editor: http://playsoft.co.uk/aplayed52.html
