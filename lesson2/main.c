@@ -13,13 +13,13 @@
 #define STICK_LEFT		11
 #define STICK_UP   		14
 #define STICK_DOWN 		13
-#define STICK_NOMOVE 	15
+#define STICK_NOMOVE 		15
 
-#define MOVING_NONE  	0
+#define MOVING_NONE  		0
 #define MOVING_UP	 	1
-#define MOVING_DOWN  	2
-#define MOVING_LEFT  	3
-#define MOVING_RIGHT 	4
+#define MOVING_DOWN  		2
+#define MOVING_LEFT  		3
+#define MOVING_RIGHT 		4
 
 unsigned char st;
 unsigned char moving_type;
