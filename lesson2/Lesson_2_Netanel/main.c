@@ -19,16 +19,25 @@
 #define MOVING_LEFT  	3
 #define MOVING_RIGHT 	4
 
-#define UFO_SPEED 		10
+#define UFO_SPEED 		2
+
+#define PLAYER_CHAR		60
+#define MISSILE_CHAR	61
+#define UFO_CHAR		62
+#define UFO_ROW			3
+
+#define SCREEN_WIDTH 	40
+#define SCREEN_HIGHT	24
+#define SCREEN_BOTTOM_RIGHT	SCREEN_WIDTH * SCREEN_HIGHT
 
 
 
 unsigned char stick;
 unsigned char trigger;
 unsigned char moving_type = MOVING_NONE;
-unsigned int player_xpos = 940;
+unsigned int player_xpos = SCREEN_BOTTOM_RIGHT - (SCREEN_WIDTH/2); // middle of bottom row
 unsigned int missile_xpos;
-unsigned char ufo_xpos = 120;
+unsigned char ufo_xpos = SCREEN_WIDTH * UFO_ROW;
 unsigned char ufo_direction = MOVING_RIGHT;
 unsigned char missile_live;
 unsigned char update_ufo = 0;
@@ -41,7 +50,7 @@ unsigned char antic4_display_list[] =
 	DL_BLK8,
 	DL_BLK8,
 	DL_BLK8,
-	DL_LMS(DL_CHR40x8x4),
+	DL_LMS(DL_CHR40x8x1),
 	0x00,
 	0x50,
 	DL_CHR40x8x4,
@@ -109,7 +118,7 @@ void update_ufo_sprite(void)
 		if (ufo_direction == MOVING_RIGHT)
 		{
 			ufo_xpos++;
-			if (ufo_xpos >= 159)
+			if (ufo_xpos >= SCREEN_WIDTH * (UFO_ROW + 1) -1)
 			{
 				ufo_direction = MOVING_LEFT;
 			}
@@ -117,7 +126,7 @@ void update_ufo_sprite(void)
 		else if (ufo_direction == MOVING_LEFT)
 		{
 			ufo_xpos--;
-			if (ufo_xpos <= 120)
+			if (ufo_xpos <= SCREEN_WIDTH * UFO_ROW)
 			{
 				ufo_direction = MOVING_RIGHT;
 			}
@@ -134,8 +143,8 @@ void update_missile_sprite(void)
 {
 	if (missile_live == 1)
 	{
-		missile_xpos -= 40;
-		if (missile_xpos < 40)
+		missile_xpos -= SCREEN_WIDTH;
+		if (missile_xpos < SCREEN_WIDTH)
 		{
 			missile_live = 0;
 		}
@@ -156,6 +165,7 @@ void update_player_sprite(void)
 
 void update_sprite(void)
 {
+
 	update_player_sprite();
 	update_missile_sprite();
 	update_ufo_sprite();
@@ -164,11 +174,11 @@ void update_sprite(void)
 
 void draw_sprite(void)
 {
-	POKE(SCREEN_MEM + player_xpos,60);
-	POKE(SCREEN_MEM + ufo_xpos,62);
+	POKE(SCREEN_MEM + player_xpos,PLAYER_CHAR);
+	POKE(SCREEN_MEM + ufo_xpos,UFO_CHAR);
 	if (missile_live == 1)
 	{
-		POKE(SCREEN_MEM + missile_xpos,61);
+		POKE(SCREEN_MEM + missile_xpos,MISSILE_CHAR);
 	}
 }
 
@@ -179,7 +189,7 @@ void handle_input(void)
 
 	if (stick == STICK_RIGHT)
 	{
-		if (player_xpos == 959)
+		if (player_xpos == SCREEN_BOTTOM_RIGHT - 1)
 		{
 			moving_type = MOVING_NONE;
 		} 
@@ -194,7 +204,7 @@ void handle_input(void)
 	}
 	else if (stick ==  STICK_LEFT)
 	{
-		if (player_xpos == 920)
+		if (player_xpos == SCREEN_BOTTOM_RIGHT - SCREEN_WIDTH)
 		{
 			moving_type = MOVING_NONE;
 		} 
@@ -223,7 +233,20 @@ void is_game_over(void)
 {
 	if (game_over == 1)
 	{
-		POKE(SCREEN_MEM + ufo_xpos,56);
+		POKE(SCREEN_MEM+15, 55); // W
+		POKE(SCREEN_MEM+16, 41); // I
+		POKE(SCREEN_MEM+17, 46); // N
+		POKE(SCREEN_MEM+18, 46); // N
+		POKE(SCREEN_MEM+19, 37); // E
+		POKE(SCREEN_MEM+20, 50); // R
+		POKE(SCREEN_MEM+21, 0); // " "
+		POKE(SCREEN_MEM+22, 41); // I
+		POKE(SCREEN_MEM+23, 51); // S
+		POKE(SCREEN_MEM+24, 0); // " "
+		POKE(SCREEN_MEM+25, 57); // Y
+		POKE(SCREEN_MEM+26, 47); // O
+		POKE(SCREEN_MEM+27, 53); // U
+		POKE(SCREEN_MEM + ufo_xpos,56); // X
 		while(1);
 	}
 }
@@ -233,20 +256,21 @@ void main(void)
 	memcpy((void*)DLIST_MEM,antic4_display_list, sizeof(antic4_display_list));
 	OS.sdlst = (void*)DLIST_MEM;
 
-	OS.color1 = 0xFF;       // playerfield 1
-	OS.color2 = 0X3E;		// playerfield 2
-	OS.color3 = 0X00;		// playerfield 2
+	OS.color0 = 0x0E;       // playerfield 0
+	OS.color1 = 0X32;		// playerfield 1
+	OS.color2 = 0XFF;		// playerfield 2
+	OS.color3 = 0XFF;		// playerfield 3
 	OS.color4 = 0x00;		// background
 
 	memcpy((void*)CHARSET_MEM, (void*)0xE000, 0x400);
 
-	memcpy((void*) (CHARSET_MEM + 8 * 60) , player_sprite, 8);
-	memcpy((void*) (CHARSET_MEM + 8 * 61) , missile_sprite, 8);
-	memcpy((void*) (CHARSET_MEM + 8 * 62) , ufo_sprite, 8);
+	memcpy((void*) (CHARSET_MEM + 8 * PLAYER_CHAR) , player_sprite, 8);
+	memcpy((void*) (CHARSET_MEM + 8 * MISSILE_CHAR) , missile_sprite, 8);
+	memcpy((void*) (CHARSET_MEM + 8 * UFO_CHAR) , ufo_sprite, 8);
 
 	OS.chbas = CHARSET_MEM >> 8; // MSB / 256
 
-	POKE(SCREEN_MEM + player_xpos,60); // Initialize player sprite
+	POKE(SCREEN_MEM + player_xpos,PLAYER_CHAR); // Initialize player sprite
 
 	while(1)
 	{
