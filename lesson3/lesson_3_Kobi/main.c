@@ -28,26 +28,23 @@
 #define THEY_CAME_STR_INDEX			4
 #define GAME_OVER_STR_INDEX			5
 #define PRESS_START_STR_INDEX		6
-#define BLANK_GAME_OVER_STR_INDEX	7
+#define BLANK_STR_INDEX				7
 #define ENEMY_SHIP_STR_INDEX		8
 #define PLAYER_SHIP_STR_INDEX		9
 #define MISSILE_STR_INDEX			10
-#define BLANK_4_CHAR_STR_INDEX		11
-#define ENEMY_ATK1_CHAR_STR_INDEX	12
-#define ENEMY_ATK2_CHAR_STR_INDEX	13
-#define ENEMY_ATK3_CHAR_STR_INDEX	14
-#define ENEMY_ATK4_CHAR_STR_INDEX	15
-#define ENEMY_ATK5_CHAR_STR_INDEX	16
-#define ENEMY_ATK6_CHAR_STR_INDEX	17
-#define ENEMY_ATK7_CHAR_STR_INDEX	18
-#define ENEMY_ATK8_CHAR_STR_INDEX	19
-#define LIVES_CHAR_STR_INDEX		20
-#define BLANK_CHAR_STR_INDEX		21
-#define LIVES_LEFT_STR_INDEX		22
-#define ABDUCTED_STR_INDEX	 		23
-#define DESTROYED_STR_INDEX 		24
-#define LOST_STR_INDEX				25
-#define YOU_WIN_STR_INDEX			26
+#define ENEMY_ATK1_CHAR_STR_INDEX	11
+#define ENEMY_ATK2_CHAR_STR_INDEX	12
+#define ENEMY_ATK3_CHAR_STR_INDEX	13
+#define ENEMY_ATK4_CHAR_STR_INDEX	14
+#define ENEMY_ATK5_CHAR_STR_INDEX	15
+#define ENEMY_ATK6_CHAR_STR_INDEX	16
+#define ENEMY_ATK7_CHAR_STR_INDEX	17
+#define ENEMY_ATK8_CHAR_STR_INDEX	18
+#define LIVES_LEFT_STR_INDEX		19
+#define ABDUCTED_STR_INDEX	 		20
+#define DESTROYED_STR_INDEX 		21
+#define LOST_STR_INDEX				22
+#define YOU_WIN_STR_INDEX			23
 
 #define MISSILE_TOP_POSITION		17
 const char * strings[] = {
@@ -62,7 +59,6 @@ const char * strings[] = {
 	" abbc",
 	" de ",
 	" fg ",
-	"     ",
 	"  hi ",
 	"  jk ",
 	"  lm ",
@@ -71,14 +67,14 @@ const char * strings[] = {
 	" jnnk",
 	" lnnm",
 	" nnnn",
-	"o",
-	" ",
 	"LIVES:",
 	"   ALIENS ABDUCTED YOU   ",
 	"YOUR SHIPS WERE DESTROYED",
 	" YOU LOST, THEY ARE HERE ",
 	" YOU WON, THEY'LL BE BACK",
 };
+
+unsigned char strings_len[sizeof(strings)/sizeof(strings[0])];
 
 unsigned char fire_triggered = 0;
 unsigned char vblank_occured;
@@ -92,7 +88,7 @@ unsigned char score;
 unsigned int time_left = 3600;
 unsigned int lives = 2;
 unsigned char clk0 = 0;
-unsigned char game_over_message = BLANK_GAME_OVER_STR_INDEX;
+unsigned char game_over_message = BLANK_STR_INDEX;
 
 unsigned char stick0;
 unsigned char strig0;
@@ -129,7 +125,7 @@ unsigned char antic4_display_list[] =
   DL_CHR40x8x4,
   DL_CHR40x8x4,
   DL_CHR40x8x4,
-  DL_CHR40x8x4,
+  DL_DLI(DL_CHR40x8x4),
   DL_CHR40x8x1,
   DL_CHR40x8x4,
   DL_CHR40x8x4,
@@ -138,7 +134,7 @@ unsigned char antic4_display_list[] =
   DL_CHR40x8x4,
   DL_CHR40x8x4,
   DL_CHR40x8x4,
-  DL_CHR40x8x4,
+  DL_DLI(DL_CHR40x8x4),
   DL_CHR40x8x4,
   DL_CHR40x8x4,
   DL_CHR40x8x4,
@@ -355,6 +351,7 @@ unsigned char sprite_data_alternate[] = {
 	0x00, 0x50, 0x51, 0x81, 0x04, 0x2A, 0x41, 0x00  //e
 };
 
+void init_strings_length();
 void string_index_to_mem(unsigned char, unsigned int);
 void toggle_game_over(void);
 void update_sprite(void);
@@ -365,6 +362,9 @@ void wait_for_vblank(void);
 void dli_routine(void);
 void vbi_routine(void);
 void init_vbi_dli(void);
+void dli_routine_1(void);
+void dli_routine_2(void);
+void dli_routine_3(void);
 
 
 void main(void)
@@ -376,7 +376,7 @@ void main(void)
 	OS.sdlst=(void*)DLIST_MEM;
 
 	// CREATE CHARSET
-	memcpy((void*)CHARSET_MEM, (int*)0xE000, 0x400);
+	memcpy((void*)CHARSET_MEM, (void*)0xE000, 0x400);
 	memcpy((void*)(CHARSET_MEM+8*65), sprite_data, 8*15);
 	OS.chbas = CHARSET_MEM >> 8;
 
@@ -389,6 +389,8 @@ void main(void)
 	OS.color2 = 0x00;
 	OS.color3 = 0xE1;
 	OS.color4 = 0x00;
+
+	init_strings_length();
 
 	string_index_to_mem(SCORE_STR_INDEX, SCREEN_MEM+2);
 	string_index_to_mem(LIVES_LEFT_STR_INDEX, SCREEN_MEM+14);
@@ -424,7 +426,7 @@ void wait_for_vblank(void)
   vblank_occured = 0;
 }
 
-void dli_routine(void)
+void dli_routine_1(void)
 {
 	asm("pha");
     asm("txa");
@@ -445,6 +447,7 @@ void dli_routine(void)
   	ANTIC.wsync = 1;
   	ANTIC.wsync = 1;
   	GTIA_WRITE.colpf1 	= 0x26;
+
   	ANTIC.wsync = 1;
   	ANTIC.wsync = 1;
   	ANTIC.wsync = 1;
@@ -468,79 +471,25 @@ void dli_routine(void)
 
   	ANTIC.chbase = CHARSET_MEM >> 8; //MSB of CHARSET
 
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
+  	OS.vdslst = &dli_routine_2;
 
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
+	asm("pla");
+    asm("tay");
+    asm("pla");
+    asm("tax");
+    asm("pla");
 
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
+    asm("rti");
+}
 
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
+void dli_routine_2(void)
+{
+	asm("pha");
+    asm("txa");
+    asm("pha");
+    asm("tya");
+    asm("pha");
 
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-
-  	GTIA_WRITE.colpf1 	= clk0;
   	ANTIC.wsync = 1;
   	GTIA_WRITE.colpf1 	= clk0 + 1;
   	ANTIC.wsync = 1;
@@ -557,78 +506,26 @@ void dli_routine(void)
   	GTIA_WRITE.colpf1 	= 0xFE;
   	GTIA_WRITE.colpf0 	= 0x22;
 
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
-  	ANTIC.wsync = 1;
+    OS.vdslst = &dli_routine_3;
+
+	asm("pla");
+    asm("tay");
+    asm("pla");
+    asm("tax");
+    asm("pla");
+
+    asm("rti");
+}
+
+void dli_routine_3(void)
+{
+	asm("pha");
+    asm("txa");
+    asm("pha");
+    asm("tya");
+    asm("pha");
 
     ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    ANTIC.wsync = 1;
-    
     if (is_player_hit > 0) ANTIC.chbase = CHARSET_MEM2 >> 8; //MSB of ALTERNATE CHARSET
     else ANTIC.chbase = CHARSET_MEM >> 8; //MSB of CHARSET
 
@@ -637,7 +534,7 @@ void dli_routine(void)
     GTIA_WRITE.colpf1	= 0xFF;
     GTIA_WRITE.colpf2	= 0x00;
     GTIA_WRITE.colpf3	= 0xE1;
-    ANTIC.wsync = 1;
+    
     ANTIC.wsync = 1;
     ANTIC.wsync = 1;
     ANTIC.wsync = 1;
@@ -676,8 +573,9 @@ void dli_routine(void)
 	GTIA_WRITE.colbk 	= 0x00;
     GTIA_WRITE.colpf0 	= 0x55;
     GTIA_WRITE.colpf2	= 0x00;
-    //ANTIC.chbase = CHARSET_MEM >> 8; // MSB / 256
     
+    OS.vdslst = &dli_routine_1;
+
 	asm("pla");
     asm("tay");
     asm("pla");
@@ -689,7 +587,7 @@ void dli_routine(void)
 
 void vbi_routine(void)
 {
-	OS.vdslst = &dli_routine;
+	OS.vdslst = &dli_routine_1;
 
 	vblank_occured = 1;
 
@@ -708,14 +606,33 @@ void init_vbi_dli(void)
 	OS.vvblki = &vbi_routine;
 }
 
+void init_strings_length(void)
+{
+	clk0 = 0;
+	do {
+		x = 0;
+		do 
+		{
+			score = PEEK(strings[clk0] + x);
+			if (score != 0) POKE(strings[clk0] + x, score - 32);
+			x++;
+		} while (PEEK(strings[clk0] + x) != 0);
+		strings_len[clk0] = x;
+		clk0++;
+	} while (clk0 < sizeof(strings) / sizeof(strings[0]));
+	clk0 = 0;
+}
 void string_index_to_mem(unsigned char str_index, unsigned int scr_pos_addr)
 {
+/*
 	x=0;
 	do 
 	{
 		POKE(scr_pos_addr + x, PEEK(strings[str_index] + x) - 32);
 		x++;
 	} while (PEEK(strings[str_index] + x) != 0);
+*/	
+	memcpy((unsigned int*)scr_pos_addr, (unsigned int*)strings[str_index], strings_len[str_index]);
 }
 
 void toggle_game_over()
@@ -742,10 +659,13 @@ void toggle_game_over()
 		time_left = 3600;
 		score = 0;
 		lives = 2;
-		string_index_to_mem(BLANK_GAME_OVER_STR_INDEX, SCREEN_MEM+447);
-		string_index_to_mem(LIVES_CHAR_STR_INDEX, SCREEN_MEM+20);
-		string_index_to_mem(LIVES_CHAR_STR_INDEX, SCREEN_MEM+21);
-		string_index_to_mem(LIVES_CHAR_STR_INDEX, SCREEN_MEM+22);
+		string_index_to_mem(BLANK_STR_INDEX, SCREEN_MEM+447);
+		POKE(SCREEN_MEM+20, 79);
+		POKE(SCREEN_MEM+21, 79);
+		POKE(SCREEN_MEM+22, 79);
+		//string_index_to_mem(LIVES_CHAR_STR_INDEX, SCREEN_MEM+20);
+		//string_index_to_mem(LIVES_CHAR_STR_INDEX, SCREEN_MEM+21);
+		//string_index_to_mem(LIVES_CHAR_STR_INDEX, SCREEN_MEM+22);
 		enemy_speed = 2;
 	}
 }
@@ -892,10 +812,12 @@ void update_sprite()
 				if (lives == 0) 
 				{
 					toggle_game_over();
-					string_index_to_mem(BLANK_CHAR_STR_INDEX, SCREEN_MEM + 20 + lives);
+					POKE(SCREEN_MEM + 20 + lives, 0);
+					//string_index_to_mem(BLANK_CHAR_STR_INDEX, SCREEN_MEM + 20 + lives);
 				} else
 				{
-					string_index_to_mem(BLANK_CHAR_STR_INDEX, SCREEN_MEM + 20 + lives);
+					POKE(SCREEN_MEM + 20 + lives, 0);
+					//string_index_to_mem(BLANK_CHAR_STR_INDEX, SCREEN_MEM + 20 + lives);
 					lives--;
 				}
 
@@ -924,14 +846,14 @@ void draw_sprite()
 	// DRAW ENEMY SHIP
 	string_index_to_mem(ENEMY_SHIP_STR_INDEX, SCREEN_MEM + x_e_pos + 79);
 	if ((is_enemy_hit == 1) || (x_e_pos == 36))
-		string_index_to_mem(BLANK_4_CHAR_STR_INDEX, SCREEN_MEM + x_e_pos + 79);
+		string_index_to_mem(BLANK_STR_INDEX, SCREEN_MEM + x_e_pos + 79);
 	
 	// DRAW PLAYER SHIP
 	if ((is_player_hit > 0) && (enemy_attack_direction > 19))
 	{
 		string_index_to_mem(PLAYER_SHIP_STR_INDEX, SCREEN_MEM + x_p_pos + 79 + 40 * y_e_atk_pos);
-		string_index_to_mem(BLANK_4_CHAR_STR_INDEX, SCREEN_MEM + x_p_pos + 119 + 40 * y_e_atk_pos);
-		string_index_to_mem(BLANK_4_CHAR_STR_INDEX, SCREEN_MEM + x_p_pos + 799);
+		string_index_to_mem(BLANK_STR_INDEX, SCREEN_MEM + x_p_pos + 119 + 40 * y_e_atk_pos);
+		string_index_to_mem(BLANK_STR_INDEX, SCREEN_MEM + x_p_pos + 799);
 	} else {
 		string_index_to_mem(PLAYER_SHIP_STR_INDEX, SCREEN_MEM + x_p_pos + 799);
 	}
@@ -940,12 +862,13 @@ void draw_sprite()
 	if ((y_m_pos <= MISSILE_TOP_POSITION) && (is_player_hit == 0))
 		string_index_to_mem(MISSILE_STR_INDEX, SCREEN_MEM + x_m_pos + 759 - 40 * y_m_pos);
 	if (fire_triggered) 
-		string_index_to_mem(BLANK_4_CHAR_STR_INDEX, SCREEN_MEM + x_m_pos + 799 - 40 * y_m_pos);
+		//string_index_to_mem(BLANK_STR_INDEX, SCREEN_MEM + x_m_pos + 799 - 40 * y_m_pos);
+		string_index_to_mem(BLANK_STR_INDEX, SCREEN_MEM + x_m_pos + 799 - 40 * y_m_pos);
 	
 	// DRAW ENEMY WEAPON - MISSILES
 	if (enemy_attack_direction == 1)
 	{
-		if (is_player_hit == 0) string_index_to_mem(BLANK_4_CHAR_STR_INDEX, SCREEN_MEM + x_e_atk_pos + 79 + 40 * y_e_atk_pos);
+		if (is_player_hit == 0) string_index_to_mem(BLANK_STR_INDEX, SCREEN_MEM + x_e_atk_pos + 79 + 40 * y_e_atk_pos);
 		if (y_e_atk_pos < 17)
 			string_index_to_mem(ENEMY_ATK1_CHAR_STR_INDEX, SCREEN_MEM + x_e_atk_pos + 119 + 40 * y_e_atk_pos);
 	}
@@ -983,7 +906,7 @@ void draw_sprite()
 
 	if ((enemy_attack_direction == 20) && (is_player_hit == 0))
 	{
-		string_index_to_mem(BLANK_4_CHAR_STR_INDEX, SCREEN_MEM + x_e_atk_pos + 79 + 40 * y_e_atk_pos);
+		string_index_to_mem(BLANK_STR_INDEX, SCREEN_MEM + x_e_atk_pos + 79 + 40 * y_e_atk_pos);
 	}
 
 	// DRAW MENU MESSAGES
