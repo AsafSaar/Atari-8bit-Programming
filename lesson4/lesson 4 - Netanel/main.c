@@ -27,6 +27,7 @@
 #define BIRD_INTERVAL 	30
 
 #define CACTUS1_CHAR 	100 // up to 105
+#define CACTUS_INIT_POS 11 * SCREEN_WIDTH -2
 
 unsigned char frame_count;
 unsigned char frame;
@@ -42,6 +43,7 @@ unsigned char game_over = 1;
 unsigned char vblank_occured = 0;
 unsigned char * banner = "SCORE:      HIGH-SCORE:";
 unsigned char * press_start = "  PRESS START (F2) TO START RUNNING";
+unsigned char dirt[] = " ,    .   x    * ,   ,    .   x    * ,   ,    .   x    * ,   ,    .   x    * ,  ";
 unsigned char banner_len;
 unsigned char start_len;
 unsigned char is_jumping;
@@ -93,10 +95,10 @@ unsigned char antic4_display_list[] =
 	0x40
 };
 
-#define FRAMES (6)
-#define HEIGHT (22)
+#define DINO_FRAMES (6)
+#define DINO_HEIGHT (22)
 
-const unsigned char P0DATA[FRAMES][HEIGHT] =
+const unsigned char P0DATA[DINO_FRAMES][DINO_HEIGHT] =
 {
   {
     0x01, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x83, 
@@ -129,7 +131,7 @@ const unsigned char P0DATA[FRAMES][HEIGHT] =
     0x1f, 0x1b, 0x19, 0x11, 0x11, 0x19
   }
 };
-const unsigned char P1DATA[FRAMES][HEIGHT] =
+const unsigned char P1DATA[DINO_FRAMES][DINO_HEIGHT] =
 {
   {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -163,7 +165,7 @@ const unsigned char P1DATA[FRAMES][HEIGHT] =
   }
 };
 
-const unsigned char P2DATA[FRAMES][HEIGHT] =
+const unsigned char P2DATA[DINO_FRAMES][DINO_HEIGHT] =
 {
   {
     0xf0, 0xf8, 0x78, 0xf8, 0xf8, 0xf8, 0xf8, 0x80, 
@@ -196,7 +198,7 @@ const unsigned char P2DATA[FRAMES][HEIGHT] =
     0x00, 0x00, 0x00, 0x00, 0x00, 0x80
   }
 };
-const unsigned char P3DATA[FRAMES][HEIGHT] =
+const unsigned char P3DATA[DINO_FRAMES][DINO_HEIGHT] =
 {
   {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -239,7 +241,10 @@ const unsigned char cactus1_data[6][8] =
 	{0x51, 0x51, 0x51, 0x51, 0x51, 0x51, 0x51, 0x51},
 	{0x55, 0x54, 0x50, 0x50, 0x50, 0x50, 0x50, 0x50}
 };
-const unsigned char M0DATA[2][16] =
+
+#define BIRD_FRAMES 2
+#define BIRD_SIZE	16 
+const unsigned char M0DATA[BIRD_FRAMES][BIRD_SIZE] =
 {
   {
     0x08, 0x08, 0x28, 0x6c, 0xec, 0xec, 0x2e, 0x3f, 
@@ -251,9 +256,6 @@ const unsigned char M0DATA[2][16] =
   }
 };
 void dli_routine0(void);
-// void dli_routine1(void);
-// void dli_routine2(void);
-// void dli_routine3(void);
 void erase_sprite(void);
 void update_bird_sprite(void);
 void update_dirt_sprite(void);
@@ -271,10 +273,10 @@ unsigned char atascii_to_internal(char * str) // converts atascii string to inte
 void restart_game(void)
 {
 	antic4_display_list[6] = DL_CHR40x8x4;
-	memset((void*)(SCREEN_MEM + SCREEN_WIDTH), 0, start_len);
 	memcpy((void*)DLIST_MEM,antic4_display_list, sizeof(antic4_display_list));
-	cactus1_xpos = 11 * SCREEN_WIDTH -2;
+	memset((void*)(SCREEN_MEM + SCREEN_WIDTH), 0, start_len); // clear start message
 	erase_sprite();
+	cactus1_xpos = CACTUS_INIT_POS;
 	game_over = 0;
 	bird_xpos = 0;
 	update_bird_sprite();
@@ -304,23 +306,19 @@ void wait_for_vblank_clock(void)
 
 void erase_sprite(void)
 {
-	memset((void*)(PMG_MEM + 0x400 + player_ypos),0,22);
-    // memset((void*)(PMG_MEM + 0x500 + player_ypos),0,sizeof(P1DATA));
-    memset((void*)(PMG_MEM + 0x600 + player_ypos),0,22);
-    // memset((void*)(PMG_MEM + 0x700 + player_ypos),0,sizeof(P3DATA));
+	//erase dino y position
+	memset((void*)(PMG_MEM + 0x400 + player_ypos),0,DINO_HEIGHT);
+	memset((void*)(PMG_MEM + 0x500 + player_ypos),0,DINO_HEIGHT);
+	memset((void*)(PMG_MEM + 0x600 + player_ypos),0,DINO_HEIGHT);
+    memset((void*)(PMG_MEM + 0x700 + player_ypos),0,DINO_HEIGHT);
 
+    //erase cactus
 	POKE(SCREEN_MEM + cactus1_xpos,0);
 	POKE(SCREEN_MEM + cactus1_xpos + SCREEN_WIDTH,0);
 	POKE(SCREEN_MEM + cactus1_xpos + 2 * SCREEN_WIDTH,0);
 	POKE(SCREEN_MEM + cactus1_xpos + 1,0);
 	POKE(SCREEN_MEM + cactus1_xpos + 1 + SCREEN_WIDTH,0);
 	POKE(SCREEN_MEM + cactus1_xpos + 1 + 2 * SCREEN_WIDTH,0);
-
-	POKE(SCREEN_MEM + dirt_xpos, 0);
-	POKE(SCREEN_MEM + (dirt_xpos + 10)%(SCREEN_WIDTH) + 14 * SCREEN_WIDTH, 0);
-	POKE(SCREEN_MEM + (dirt_xpos + 24)%(SCREEN_WIDTH) + 14 * SCREEN_WIDTH, 0);
-	POKE(SCREEN_MEM + (dirt_xpos + 27)%(SCREEN_WIDTH) + 14 * SCREEN_WIDTH, 0);
-	
 }
 
 
@@ -352,103 +350,9 @@ void update_player_sprite(void)
 			is_falling = 0;
 			fly_grace = FLY_GRACE;
 		}
-}
 
-void update_cactus_sprite(void)
-{
-	if (frame_count % ENEMY_SPEED == 0 && !game_over) 
-		cactus1_xpos--;
-
-	if (cactus1_xpos < 10 * SCREEN_WIDTH) // loop animation when reaching end of screen
-	{
-		cactus1_xpos = 11 * SCREEN_WIDTH -2;
-	}	
-}
-
-void update_dirt_sprite(void)
-{
-	if (frame_count % ENEMY_SPEED == 0 && !game_over) 
-		dirt_xpos--;
-
-	if (dirt_xpos < 14 * SCREEN_WIDTH) // loop animation when reaching end of screen
-	{
-		dirt_xpos = 15 * SCREEN_WIDTH - 2;
-	}	
-}
-
-void update_bird_sprite(void)
-{
-	if (!game_over && summon_bird)
-		{
-			bird_xpos--;
-			bird_xpos--;
-			GTIA_WRITE.hposm0 = bird_xpos;
-		    GTIA_WRITE.hposm1 = bird_xpos - 2;
-	    	GTIA_WRITE.hposm2 = bird_xpos - 4;
-	    	GTIA_WRITE.hposm3 = bird_xpos - 6;
-		}
-	if (bird_xpos < 30)
-		{
-			summon_bird = 0;
-			bird_xpos = 0;
-		}
-
-}
-
-void update_score(void)
-{
-	if (frame_count % (ENEMY_SPEED + 10) == 0 && !game_over) // calculate score only once in ENEMY_SPEED + constant
-	{
-		score++;
-		score_banner[0] = 16 + (score % 10);
-		score_banner[1] = 16 + (score / 10) % 10;
-		score_banner[2] = 16 + (score / 100) % 10;
-		if (score % BIRD_INTERVAL == 0)
-			summon_bird = 1;
-	}
-
-}
-
-void update_sprite(void)
-{
-
-	update_player_sprite();
-	update_cactus_sprite();
-	update_dirt_sprite();
-	update_bird_sprite();
-	update_score();
-
-}
-
-
-void draw_sprite(void)
-{
-	// draw score
-	POKE(SCREEN_MEM + 9, score_banner[0]);	// 1
-	POKE(SCREEN_MEM + 8, score_banner[1]);	// 10
-	POKE(SCREEN_MEM + 7, score_banner[2]);	// 100
-
-	POKE(SCREEN_MEM + 26, hi_score_banner[0]);	// 1
-	POKE(SCREEN_MEM + 25, hi_score_banner[1]);	// 10
-	POKE(SCREEN_MEM + 24, hi_score_banner[2]);	// 100
-	
-	// draw characters
-	POKE(SCREEN_MEM + cactus1_xpos,CACTUS1_CHAR);
-	POKE(SCREEN_MEM + cactus1_xpos + SCREEN_WIDTH,CACTUS1_CHAR+1);
-	POKE(SCREEN_MEM + cactus1_xpos + 2 * SCREEN_WIDTH,CACTUS1_CHAR+2);
-	POKE(SCREEN_MEM + cactus1_xpos + 1,CACTUS1_CHAR+3);
-	POKE(SCREEN_MEM + cactus1_xpos + 1 + SCREEN_WIDTH,CACTUS1_CHAR+4);
-	POKE(SCREEN_MEM + cactus1_xpos + 1 + 2 * SCREEN_WIDTH,CACTUS1_CHAR+5);
-
-	POKE(SCREEN_MEM + dirt_xpos, 10);
-	POKE(SCREEN_MEM + (dirt_xpos + 10)%(SCREEN_WIDTH) + 14 * SCREEN_WIDTH, 62);
-	POKE(SCREEN_MEM + (dirt_xpos + 24)%(SCREEN_WIDTH) + 14 * SCREEN_WIDTH, 14);
-	POKE(SCREEN_MEM + (dirt_xpos + 27)%(SCREEN_WIDTH) + 14 * SCREEN_WIDTH, 12);
-	
-	// draw sprites
 	if (frame_count % FRAME_SPEED == 0) // update animation every FRAME_SPEED
 	{
-		bird_frame = !bird_frame;
 		if (game_over)
 		{
 			frame = 5;
@@ -470,11 +374,106 @@ void draw_sprite(void)
 			frame = frame%2 + 3;
 		}
 	}
-    memcpy((void*)(PMG_MEM + 0x300 + bird_ypos),&M0DATA[bird_frame],22);
-    memcpy((void*)(PMG_MEM + 0x400 + player_ypos),&P0DATA[frame],22);
-    // memcpy((void*)(PMG_MEM + 0x500 + player_ypos),&P1DATA[frame],sizeof(P1DATA[0]));
-    memcpy((void*)(PMG_MEM + 0x600 + player_ypos),&P2DATA[frame],22);
-    // memcpy((void*)(PMG_MEM + 0x700 + player_ypos),&P3DATA[frame],sizeof(P3DATA[0]));
+}
+
+void update_cactus_sprite(void)
+{
+	if (frame_count % ENEMY_SPEED == 0 && !game_over) 
+		cactus1_xpos--;
+
+	if (cactus1_xpos < 10 * SCREEN_WIDTH) // loop animation when reaching end of screen
+	{
+		cactus1_xpos = 11 * SCREEN_WIDTH -2;
+	}	
+}
+
+void update_dirt_sprite(void)
+{
+	if (frame_count % ENEMY_SPEED == 0 && !game_over)
+	{
+		dirt_xpos++;
+	}
+
+	if (dirt_xpos > SCREEN_WIDTH) // loop animation when reaching end of screen
+	{
+		dirt_xpos = 0;
+	}	
+}
+
+void update_bird_sprite(void)
+{
+	if (!game_over && summon_bird)
+		{
+			bird_xpos -= 2;
+		}
+	if (bird_xpos < 30)
+		{
+			summon_bird = 0;
+			bird_xpos = 0;
+		}
+	if (frame_count % FRAME_SPEED == 0) // update animation every FRAME_SPEED
+		bird_frame = !bird_frame;
+}
+
+void update_score(void)
+{
+	if (frame_count % (ENEMY_SPEED + 10) == 0 && !game_over) // calculate score only once in ENEMY_SPEED + constant
+	{
+		score++;
+		score_banner[0] = 16 + (score % 10);
+		score_banner[1] = 16 + (score / 10) % 10;
+		score_banner[2] = 16 + (score / 100) % 10;
+		if (score % BIRD_INTERVAL == 0)
+			summon_bird = 1;
+	}
+
+}
+
+void update_sprite(void)
+{
+	update_player_sprite();
+	update_cactus_sprite();
+	update_dirt_sprite();
+	update_bird_sprite();
+	update_score();
+}
+
+
+void draw_sprite(void)
+{
+	// draw score
+	POKE(SCREEN_MEM + 9, score_banner[0]);	// 1
+	POKE(SCREEN_MEM + 8, score_banner[1]);	// 10
+	POKE(SCREEN_MEM + 7, score_banner[2]);	// 100
+
+	POKE(SCREEN_MEM + 26, hi_score_banner[0]);	// 1
+	POKE(SCREEN_MEM + 25, hi_score_banner[1]);	// 10
+	POKE(SCREEN_MEM + 24, hi_score_banner[2]);	// 100
+	
+	// draw cactus
+	POKE(SCREEN_MEM + cactus1_xpos,CACTUS1_CHAR);
+	POKE(SCREEN_MEM + cactus1_xpos + SCREEN_WIDTH,CACTUS1_CHAR+1);
+	POKE(SCREEN_MEM + cactus1_xpos + 2 * SCREEN_WIDTH,CACTUS1_CHAR+2);
+	POKE(SCREEN_MEM + cactus1_xpos + 1,CACTUS1_CHAR+3);
+	POKE(SCREEN_MEM + cactus1_xpos + 1 + SCREEN_WIDTH,CACTUS1_CHAR+4);
+	POKE(SCREEN_MEM + cactus1_xpos + 1 + 2 * SCREEN_WIDTH,CACTUS1_CHAR+5);
+
+	// draw dirt
+	memcpy((void*)(SCREEN_MEM + 14 * SCREEN_WIDTH), &dirt[dirt_xpos], SCREEN_WIDTH);
+
+	
+	// draw bird
+	GTIA_WRITE.hposm0 = bird_xpos;
+    GTIA_WRITE.hposm1 = bird_xpos - 2;
+	GTIA_WRITE.hposm2 = bird_xpos - 4;
+	GTIA_WRITE.hposm3 = bird_xpos - 6;
+    memcpy((void*)(PMG_MEM + 0x300 + bird_ypos),&M0DATA[bird_frame],BIRD_SIZE);
+
+    // draw dino
+    memcpy((void*)(PMG_MEM + 0x400 + player_ypos),&P0DATA[frame],DINO_HEIGHT);
+    // memcpy((void*)(PMG_MEM + 0x500 + player_ypos),&P2DATA[frame],DINO_HEIGHT);
+    memcpy((void*)(PMG_MEM + 0x600 + player_ypos),&P2DATA[frame],DINO_HEIGHT);
+    // memcpy((void*)(PMG_MEM + 0x700 + player_ypos),&P2DATA[frame],DINO_HEIGHT);
 }
 
 void handle_input(void)
@@ -521,7 +520,7 @@ void vbi_routine(void)
 	asm("jmp $E45F"); // continue normal vblank flow (SYSVBV)
 }
 
-void dli_routine0(void) // handle sky and ufo charset
+void dli_routine0(void) // draw ground
 {
 	asm("pha");
     asm("txa");
@@ -547,64 +546,8 @@ void dli_routine0(void) // handle sky and ufo charset
     asm("tax");
     asm("pla");
     asm("rti");
-	// OS.vdslst = &dli_routine1;
 }
 
-// void dli_routine1(void) // handle player charset
-// {
-// 	asm("pha");
-//     asm("txa");
-//     asm("pha");
-//     asm("tya");
-//     asm("pha");
-// 	ANTIC.wsync = 1;
-
-//     asm("pla");
-//     asm("tay");
-//     asm("pla");
-//     asm("tax");
-//     asm("pla");
-//     asm("rti");
-// 	OS.vdslst = &dli_routine2;
-// }
-
-// void dli_routine2(void) // handle game over banner colors
-// {
-// 	asm("pha");
-//     asm("txa");
-//     asm("pha");
-//     asm("tya");
-//     asm("pha");
-
-// 	ANTIC.wsync = 1;
-
-//     asm("pla");
-//     asm("tay");
-//     asm("pla");
-//     asm("tax");
-//     asm("pla");
-//     asm("rti");
-// 	OS.vdslst = &dli_routine3;
-// }
-
-// void dli_routine3(void) // paint ground
-// {
-// 	asm("pha");
-//     asm("txa");
-//     asm("pha");
-//     asm("tya");
-//     asm("pha");
-
-// 	ANTIC.wsync = 1;
-
-//     asm("pla");
-//     asm("tay");
-//     asm("pla");
-//     asm("tax");
-//     asm("pla");
-//     asm("rti");
-// 	OS.vdslst = &dli_routine0;
-// }
 void init_nmis(void)
 {
 	wait_for_vblank_clock();
@@ -637,8 +580,6 @@ void setup_pmg(void)
     // clear PMG memory
 	bzero((void*)(PMG_MEM+0x300),0x500);
 
-    // tell ANTIC do we work with single line or double line resolution 
-    OS.sdmctl = 0x3E; // single line
 
 	// tell GTIA what type of PMG do we want?
 	GTIA_WRITE.gractl = GRACTL_MISSLES + GRACTL_PLAYERS;
@@ -676,15 +617,18 @@ void setup_pmg(void)
 
     // player horizontal position
     GTIA_WRITE.hposp0 = 0x41;
-    GTIA_WRITE.hposp1 = 0x41;
+    // GTIA_WRITE.hposp1 = 0x41;
     GTIA_WRITE.hposp2 = 0x49;
-    GTIA_WRITE.hposp3 = 0x49;
+    // GTIA_WRITE.hposp3 = 0x49;
 
     // memset((void*)(PMG_MEM + 0x400 + 0x90),255,8);
 }
 
 void main(void)
 {
+	// shut down ANTIC DMA
+	OS.sdmctl = 0;
+
 	// set custom display liat
 	memcpy((void*)DLIST_MEM,antic4_display_list, sizeof(antic4_display_list));
 	OS.sdlst = (void*)DLIST_MEM;
@@ -710,11 +654,15 @@ void main(void)
 
 	banner_len = atascii_to_internal(banner);
 	start_len = atascii_to_internal(press_start);
+	atascii_to_internal(dirt);
 
 	init_nmis();
 	setup_pmg();
 	// restart_game();
 	memcpy((void*)(SCREEN_MEM + SCREEN_WIDTH), (void*)press_start, start_len);
+
+    // tell ANTIC do we work with single line or double line resolution
+    OS.sdmctl = 0x3E; // single line
 
 	while(1)
 	{
@@ -724,7 +672,7 @@ void main(void)
 		erase_sprite();
 		update_sprite();
 		draw_sprite();
-		// detect_collision();
+		detect_collision();
 		handle_game_over();
 	};
 }
